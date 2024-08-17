@@ -1,0 +1,44 @@
+
+terraform {
+  required_providers {
+    fortios = {
+      source  = "fortinetdev/fortios"
+      version = "1.17.0"
+    }
+  }
+}
+
+
+provider "fortios" {
+  hostname = "172.20.254.2"
+  token    = "mGHgH5wGm3p5dH3j1cthpzw39k1bmN"
+  insecure = "true"
+}
+
+
+
+resource "fortios_firewall_address" "{{ source_name }}" {
+  allow_routing        = "disable"
+  associated_interface = "interface_1"
+  color                = 3
+  end_ip               = "255.255.255.252"
+  name                 = "{{ source_name }}"
+  start_ip             = "192.168.0.1"
+  subnet               = "192.168.0.1 255.255.255.252"
+  type                 = "ipmask"
+  visibility           = "enable"
+}
+
+
+
+resource "fortios_firewall_address" "{{ destination_name }}" {
+  allow_routing        = "disable"
+  associated_interface = "interface_2"
+  color                = 3
+  end_ip               = "255.255.255.252"
+  name                 = "{{ destination_name }}"
+  start_ip             = "192.168.5.1"
+  subnet               = "192.168.5.1 255.255.255.252"
+  type                 = "ipmask"
+  visibility           = "enable"
+}

@@ -1,0 +1,204 @@
+terraform {
+  required_providers {
+    fortios = {
+      source  = "fortinetdev/fortios"
+      version = "1.20.0"
+    }
+  }
+}
+
+provider "fortios" {
+  hostname = "{{ utm_path }}"
+  token    = "{{ utm_token }}"
+  insecure = "true"
+}
+
+locals {
+  source_ips = ["{{ source_name }}"]
+  dest_ips   = ["{{ destination_name }}"]
+  services   = [{%for service in services%}"{{ service }}",{%endfor%}]
+}
+
+locals {
+  # Flatten policies to extract srcaddr and dstaddr names
+  policies_flattened = {
+    for id, policy in data.fortios_firewall_policy.policy :
+    id => {
+      srcaddr_names = [for src in policy.srcaddr : src.name]
+      dstaddr_names = [for dst in policy.dstaddr : dst.name]
+      service_names = [for svc in policy.service : svc.name]
+    }
+  }
+  filter_svc_dst = {
+    for id, policy in local.policies_flattened :
+    id => policy if alltrue([for svc in local.services : contains(policy.service_names, svc)])
+    && alltrue([for dip in local.dest_ips : contains(policy.dstaddr_names, dip)])
+    && length(policy.dstaddr_names) == length(local.dest_ips)
+    && length(policy.service_names) == length(local.services)
+  }
+  filter_src_dst = {
+    for id, policy in local.policies_flattened :
+    id => policy if alltrue([for sip in local.source_ips : contains(policy.srcaddr_names, sip)])
+    && alltrue([for dip in local.dest_ips : contains(policy.dstaddr_names, dip)])
+    && length(policy.srcaddr_names) == length(local.source_ips)
+    && length(policy.dstaddr_names) == length(local.dest_ips)
+  }
+  list_ids = length(local.filter_svc_dst) > 0 ? [for id, policy in local.filter_svc_dst : id] : [for id, policy in local.filter_src_dst : id]
+  filtered_policies = {
+    for id, policy in data.fortios_firewall_policy.policy :
+    id => policy if contains(local.list_ids, id)
+  }
+  policies_with_changes = {
+    for id, policy in local.filtered_policies :
+    id => policy if(
+      length(local.policies_flattened[id].service_names) != length(policy.service) ||
+      length(local.policies_flattened[id].srcaddr_names) != length(policy.srcaddr) ||
+      length(local.policies_flattened[id].dstaddr_names) != length(policy.dstaddr)
+    )
+  }
+  anychanges = length(local.policies_with_changes) > 0
+}
+
+data "fortios_firewall_policylist" "all" {
+}
+
+data "fortios_firewall_policy" "policy" {
+  for_each = toset([for id in data.fortios_firewall_policylist.all.policyidlist : tostring(id)])
+  policyid = each.value
+}
+
+resource "fortios_firewall_policy" "existing_policy" {
+  for_each = local.filtered_policies
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [
+      dynamic_sort_subtable,
+      get_all_tables
+    ]
+  }
+  policyid = each.value.policyid
+  name     = each.value.name
+  dynamic "dstintf" {
+    for_each = each.value.dstintf
+    content {
+      name = dstintf.value.name
+    }
+  }
+  dynamic "srcintf" {
+    for_each = each.value.srcintf
+    content {
+      name = srcintf.value.name
+    }
+  }
+  dynamic "service" {
+    for_each = each.value.service
+    content {
+      name = service.value.name
+    }
+  }
+  dynamic "service" {
+    for_each = local.services
+    content {
+      name = service.value
+    }
+  }
+  dynamic "srcaddr" {
+    for_each = each.value.srcaddr
+    content {
+      name = srcaddr.value.name
+    }
+  }
+  dynamic "srcaddr" {
+    for_each = local.source_ips
+    content {
+      name = srcaddr.value
+    }
+  }
+  dynamic "dstaddr" {
+    for_each = each.value.dstaddr
+    content {
+      name = dstaddr.value.name
+    }
+  }
+  dynamic "users" {
+    for_each = each.value.users
+    content {
+      name = users.value.name
+    }
+  }
+
+  comments              = local.anychanges ? join("\nupdated with ", [each.value.comments, "{{ policy_name }}"]) : each.value.comments
+  action                = each.value.action
+  status                = each.value.status
+  schedule              = each.value.schedule
+  nat                   = each.value.nat
+  av_profile            = each.value.av_profile
+  webfilter_profile     = each.value.webfilter_profile
+  dnsfilter_profile     = each.value.dnsfilter_profile
+  ips_sensor            = each.value.ips_sensor
+  application_list      = each.value.application_list
+  file_filter_profile   = each.value.file_filter_profile
+  ssl_ssh_profile       = each.value.ssl_ssh_profile
+  wccp                  = each.value.wccp
+  captive_portal_exempt = each.value.captive_portal_exempt
+  logtraffic            = each.value.logtraffic
+  capture_packet        = each.value.capture_packet
+  ippool                = each.value.ippool
+}
+
+import {
+  for_each = local.filtered_policies
+  to       = fortios_firewall_policy.existing_policy[each.key]
+  id       = each.value.policyid
+}
+
+resource "fortios_firewall_policy" "{{ policy_name }}" {
+  count      = length(local.filtered_policies) == 0 ? 1 : 0
+  action     = "{{ action }}"
+  logtraffic = "all"
+  name       = "{{ policy_name }}"
+  uuid       = "{{ policy_id }}"
+  schedule   = "{{ schedule }}"
+  nat        = "disable"
+  {% if access_type == "Server to Server" %}
+  vdomparam = "Farhang-IDC"
+  {% endif %}
+  {% if access_type == "User to Server" %}
+  users  {
+    name = "{{ user }}"
+  }
+  {% endif %}{% if  access_type == "User Group to Server" %}
+  groups  {
+    name = "{{ group }}"
+  }{% endif %}{% if source_interface %}
+  srcintf {
+    name = "{{ source_interface }}"
+  }{% else %}
+  srcintf {
+    name = "any"
+  }{% endif %}{% if destination_interface %}
+  dstintf {
+    name = "{{ destination_interface }}"
+  }{% else %}
+  dstintf {
+    name = "any"
+  }{% endif %}
+  dynamic "srcaddr" {
+    for_each = local.source_ips
+    content {
+      name = srcaddr.value
+    }
+  }
+  dynamic "dstaddr" {
+    for_each = local.dest_ips
+    content {
+      name = dstaddr.value
+    }
+  }
+  dynamic "service" {
+    for_each = local.services
+    content {
+      name = service.value
+    }
+  }
+}

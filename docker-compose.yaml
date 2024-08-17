@@ -1,0 +1,105 @@
+services:
+  infra_api:
+    image: gitops.asax.ir/infrastructure-automation-team/security-automation/access-rule-automation/utm-automation:latest
+    container_name: infra_api
+    restart: unless-stopped
+    pull_policy: always
+    networks:
+      - utm_automation
+      - traefik-net
+    command: python infra-api/manage.py runserver 0.0.0.0:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+    volumes:
+      - /opt/terraform_resources:/opt/terraform_resources
+    env_file:
+      - ./.env
+    environment:
+        DJANGO_SETTING_DEBUG: True
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-net
+      - traefik.http.routers.infra_api.entrypoints=http
+      - traefik.http.routers.infra_api.rule=Host(`${INFRA_DOMAIN}`)
+    # - traefik.http.routers.infra_api.middlewares=https-redirect
+      - traefik.http.routers.infra_api-secure.entrypoints=https
+      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.infra_api-secure.rule=Host(`${INFRA_DOMAIN}`)
+      - traefik.http.routers.infra_api-secure.tls=true
+      - traefik.http.routers.infra_api-secure.tls.options=default
+      - traefik.http.services.infra_api.loadbalancer.server.port=8000
+
+  queue_executor:
+    image: gitops.asax.ir/infrastructure-automation-team/security-automation/access-rule-automation/utm-automation:latest
+    container_name: queue_executor
+    restart: unless-stopped
+    networks:
+      - utm_automation
+      - traefik-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+    env_file:
+      - ./.env
+    command: ["python", "queue_executor/proccess_queue.py"]
+
+  redis:
+    image: repo.asax.ir/redis:7.2-alpine
+    container_name: redis
+    restart: always
+    networks:
+      - utm_automation
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+
+  rabbit:
+    image: repo.asax.ir/rabbitmq:3-alpine
+    container_name: rabbit
+    restart: always
+    networks:
+      - utm_automation
+    healthcheck:
+        test: rabbitmq-diagnostics -q ping
+
+  traefik:
+    image: repo.asax.ir/traefik:3.1
+    restart: always
+    container_name: traefik
+    networks:
+      - traefik-net
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./certs:/certs:ro
+    command:
+      - --log.level=ERROR
+      - --log.filepath=/log-file.log
+      - --log.format=json
+      - --api=true
+      - --api.insecure=true
+      - --ping=true
+      - --accesslog=true
+      - --accesslog.fields.names.StartUTC=drop
+      - --accesslog.bufferingsize=250
+      - --providers.docker.endpoint=unix:///var/run/docker.sock
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=traefik-net
+      - --entrypoints.http.address=:80
+      - --entrypoints.https.address=:443
+      - --metrics.prometheus=true
+      - --entryPoints.metrics.address=:8082
+      - --metrics.prometheus.entryPoint=metrics
+      - --providers.file.directory=/certs
+      
+networks:
+    utm_automation:
+      name: utm_automation
+    traefik-net:
+      name: traefik-net

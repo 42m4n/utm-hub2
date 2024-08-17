@@ -1,0 +1,9 @@
+# Ignore everything
+*
+
+# Include necessary files and directories
+!Dockerfile
+!requirements.txt
+!queue_executor/
+!infra-api/
+!terraform/

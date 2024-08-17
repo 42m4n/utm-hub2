@@ -1,0 +1,58 @@
+stages:
+- build
+- deploy
+
+variables:
+  IMAGE_NAME: $CI_REGISTRY/infrastructure-automation-team/security-automation/access-rule-automation/utm-automation
+
+default:
+  interruptible: true
+  tags:
+  - docker
+  image: docker:dind
+  before_script:
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+build-job:
+  stage: build
+  script:
+  - docker build -t $IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
+  - docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $IMAGE_NAME:latest
+  - docker push $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+  - docker push $IMAGE_NAME:latest
+  when: manual
+
+deploy-job:
+  stage: deploy
+  needs:
+  - job: build-job
+  variables:
+    DOMAIN: infra.asax.ir
+    SERVER_NAME: 192.168.122.252
+    SSH_USER: ubuntu
+    SSH_PORT: 22
+    SERVICE_PATH: utm-automation
+  before_script:
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+  - chmod 600 ~/.ssh/id_rsa
+  - echo "Host server-utm" > ~/.ssh/config
+  - echo "  HostName $SERVER_NAME" >> ~/.ssh/config
+  - echo "  User $SSH_USER" >> ~/.ssh/config
+  - echo "  Port $SSH_PORT" >> ~/.ssh/config
+  - echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+  script:
+  - |
+    ssh server-utm "
+    [ -d ${SERVICE_PATH} ] || mkdir -p ${SERVICE_PATH} "
+    scp docker-compose.yml server-utm:~/${SERVICE_PATH}
+    ssh server-utm "
+    cd ~/${SERVICE_PATH}
+    docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    docker compose up -d
+    "
+  environment:
+    name: production
+    url: https://$DOMAIN
+  when: manual
