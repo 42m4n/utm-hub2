@@ -33,7 +33,7 @@ def process_quese():
     while True:
         queue_file = Terraform.local_terraform_queue_path if BaseSetting.debug else Terraform.terraform_queue_path
         logs_file = Terraform.local_terraform_log_path if BaseSetting.debug else Terraform.terraform_log_path
-        files_directory = Terraform.loca_terraform_resources_path if BaseSetting.debug else Terraform.terraform_resources_path
+        files_directory = Terraform.local_terraform_resources_path if BaseSetting.debug else Terraform.terraform_resources_path
         with open(f"{queue_file}", encoding="UTF-8") as whole_queue:
             loaded_lines = 0
 

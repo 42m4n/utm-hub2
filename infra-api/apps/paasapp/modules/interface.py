@@ -5,10 +5,13 @@ from .utm import UTMHandler
 
 
 def incoming_interface_clients(username, utm_name=None):
-    ldap_handler = LDAPHandler()
-    ldap_handler.connect()
-    interface = ldap_handler.get_user_ou(username)
-    ldap_handler.disconnect()
+    try:
+        ldap_handler = LDAPHandler()
+        ldap_handler.connect()
+        interface = ldap_handler.get_user_ou(username) or "any"
+        ldap_handler.disconnect()
+    except:
+        interface = "any"
     if interface == "Ams":
         return "Ams-teh"
     if interface == "Operations":
@@ -38,7 +41,7 @@ def outgoing_interface_clients(ipaddr, utm_name=None):
     for network, interface in networks.items():
         if ip in ipaddress.ip_network(network):
             return interface
-    return None
+    return "any"
 
 
 def incoming_interface_server_to_server(ipaddr):
@@ -48,7 +51,10 @@ def incoming_interface_server_to_server(ipaddr):
         print(f"Invalid IPv4 address: {ipaddr}")
         return None
     utm_handler = UTMHandler()
-    interface = utm_handler.get_interface_by_ip(ip)
+    try:
+        interface = utm_handler.get_interface_by_ip(ip)
+    except:
+        interface = "any"
     return interface
 
 

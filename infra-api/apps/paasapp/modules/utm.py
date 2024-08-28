@@ -26,6 +26,7 @@ class UTMHandler:
         }
         self.interfaces_url = f"https://{self.utm_path}/{UTM.utm_interfaces_api}"
         self.services_url = f"https://{self.utm_path}/{UTM.utm_services_api}"
+        self.policies_url = f"https://{self.utm_path}{UTM.utm_policies_api}"
         self.timeout = 20
 
     def get_services(self, search_field=None):
@@ -174,3 +175,46 @@ class UTMHandler:
             except Exception as e:
                 logger.error(f'Error at getting interface by IP: {e}')
                 return None
+
+    def get_policies(self):
+        """Fetch firewall policies from Fortigate API."""
+        try:
+            response = requests.get(self.policies_url,headers=self.headers, verify=False)
+            response.raise_for_status  # Raises an HTTPError for bad responses
+            return response.json()["results"]
+        except Exception as e:
+            print(f"Failed to fetch policies: {e}")
+            raise(e)
+
+
+def filter_utm_policies_source_destination(policies:list,sources:list,destinations:list):
+    matching_policies = []
+    for policy in policies:
+        # Get all destination names from the policy
+        policy_destinations = set(dst.get('name') for dst in policy.get('dstaddr', []))
+        # Get all service names from the policy
+        policy_sources = set(src.get('name') for src in policy.get('srcaddr', []))
+        # Check if destinations match exactly
+        dst_match = set(destinations) == policy_destinations
+        # Check if services match exactly
+        service_match = set(sources) == policy_sources
+        # Check if both destinations and services match exactly
+        if dst_match and service_match:
+            matching_policies.append(policy)
+    return matching_policies  
+
+def filter_utm_policies_services_destination(policies:list,services:list,destinations:list):
+    matching_policies = []
+    for policy in policies:
+        # Get all destination names from the policy
+        policy_destinations = set(dst.get('name') for dst in policy.get('dstaddr', []))
+        # Get all service names from the policy
+        policy_services = set(svc.get('name') for svc in policy.get('service', []))
+        # Check if destinations match exactly
+        dst_match = set(destinations) == policy_destinations
+        # Check if services match exactly
+        service_match = set(services) == policy_services
+        # Check if both destinations and services match exactly
+        if dst_match and service_match:
+            matching_policies.append(policy)
+    return matching_policies

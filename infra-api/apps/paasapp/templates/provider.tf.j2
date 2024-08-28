@@ -1,0 +1,16 @@
+terraform {
+  required_providers {
+    fortios = {
+      source  = "fortinetdev/fortios"
+    }
+  }
+}
+
+provider "fortios" {
+  hostname = "{{ utm_hostname }}"
+  token    = var.utm_token
+  insecure = true
+}
+
+variable "utm_token" {
+}

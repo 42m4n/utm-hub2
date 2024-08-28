@@ -1,0 +1,40 @@
+resource "fortios_firewall_policy" "{{ policy_name }}" {
+  action     = "{{ action }}"
+  logtraffic = "all"
+  name       = "{{ policy_name }}"
+  uuid       = "{{ policy_id }}"
+  schedule   = "{{ schedule }}"
+  comments = "created with {{ policy_name}}"
+  nat        = "disable"
+  {% if access_type == "Server to Server" %}
+  vdomparam = "Farhang-IDC"
+# TODO change vdomparam base on utm name
+  {% endif %}
+  dstaddr {
+    name = "{{ destination_name }}"
+  }
+  dstintf {
+    name = "{{ destination_interface }}"
+    }
+  srcaddr {
+    name = "{{ source_name }}"
+  }
+  {% if access_type == "User to Server" %}
+  users  {
+    name = "{{ user }}"
+  }
+  {% endif %}
+  {% if  access_type == "User Group to Server" %}
+  groups  {
+    name = "{{ group }}"
+  }
+  {% endif %}
+  srcintf {
+    name = "{{ source_interface }}"
+  }
+  {% for service in services %}
+  service {
+    name = "{{ service }}"
+  }
+  {% endfor %}
+}

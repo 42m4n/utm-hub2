@@ -4,7 +4,7 @@ import redis
 import json 
 
 class BaseSetting:
-    debug = os.getenv("DJANGO_SETTING_DEBUG", False)
+    debug = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
 
 
 class Terraform:
@@ -15,8 +15,8 @@ class Terraform:
     terraform_log_path = os.getenv("TERRAFORM_LOG_PATH", "/opt/terraform_log/logs.json")
 
     # DEBUG TRUE
-    local_terraform_base_path = os.getenv("LOCAL_TERRAFORM_BASE_PATH", "./terraform/")
-    loca_terraform_resources_path = os.getenv("LOCA_TERRAFORM_RESOURCES_PATH", "./terraform_resources/")
+    local_terraform_base_path = os.getenv("LOCAL_TERRAFORM_BASE_PATH", "../terraform/")
+    local_terraform_resources_path = os.getenv("LOCAL_TERRAFORM_RESOURCES_PATH", "./terraform_resources/")
     local_terraform_queue_path = os.getenv("LOCAL_TERRAFORM_QUEUE_PATH", "./terraform_queue/queue.json")
     local_terraform_log_path = os.getenv("LOCAL_TERRAFORM_LOG_PATH", "./terraform_log/logs.json")
 
@@ -27,11 +27,12 @@ class UTM:
     utms = json.loads(os.getenv(
                 "UTMS",'''[
                     {"UTM_NAME":"utm1","UTM_ADDRESS":"172.24.1.33:1443","UTM_TOKEN":"75c3qpdG4QnG58jb1zpw996b36zyzH"},
-                    {"UTM_NAME":"utm2","UTM_ADDRESS":"172.20.26.148","UTM_TOKEN":"17dfhsz6t4N80yxq60q7fcny30Qmng"}
+                    {"UTM_NAME":"utm2","UTM_ADDRESS":"172.20.26.148","UTM_TOKEN":"53jq8tQcQmnn74N88Qpf4qgb0H8h8g"}
                 ]'''))
     
     utm_interfaces_api = os.getenv("UTM_INTERFACES_API", 'api/v2/cmdb/system/interface')
     utm_services_api = os.getenv("UTM_SERVICES_API", 'api/v2/cmdb/firewall.service/custom')
+    utm_policies_api = os.getenv("UTM_POLICIES_API", '/api/v2/cmdb/firewall/policy')
 
 
 class Database:

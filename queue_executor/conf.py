@@ -1,9 +1,10 @@
 import os
 import redis
+import json
 
 
 class BaseSetting:
-    debug = os.getenv("DJANGO_SETTING_DEBUG", False)
+    debug = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
 
 
 class Terraform:
@@ -14,8 +15,8 @@ class Terraform:
     terraform_log_path = os.getenv("TERRAFORM_LOG_PATH", "/opt/terraform_log/logs.json")
 
     # DEBUG TRUE
-    local_terraform_base_path = os.getenv("LOCAL_TERRAFORM_BASE_PATH", "./terraform/")
-    loca_terraform_resources_path = os.getenv("LOCA_TERRAFORM_RESOURCES_PATH", "./terraform_resources/")
+    local_terraform_base_path = os.getenv("LOCAL_TERRAFORM_BASE_PATH", "/utm-automation/terraform/")
+    local_terraform_resources_path = os.getenv("LOCAL_TERRAFORM_RESOURCES_PATH", "/utm-automation/terraform_resources/")
     local_terraform_queue_path = os.getenv("LOCAL_TERRAFORM_QUEUE_PATH", "./terraform_queue/queue.json")
     local_terraform_log_path = os.getenv("LOCAL_TERRAFORM_LOG_PATH", "./terraform_log/logs.json")
 
@@ -53,3 +54,10 @@ class RabbitMQ:
     username = os.getenv("RABBITMQ_USERNAME", 'pusheradmin')
     password = os.getenv("RABBITMQ_PASSWORD", '1qaz!QAZ')
     queue_name = os.getenv("RABBITMQ_QUEUE_NAME", 'utm_automation_log')
+
+
+class UTM:
+    utms = json.loads(os.getenv(
+                "UTMS",'''[
+                    {"UTM_NAME":"UTM-Test","UTM_ADDRESS":"172.20.26.148","UTM_TOKEN":"60xnNkpdfz70H756h1m5HdrbQc4wkm"}
+                ]'''))

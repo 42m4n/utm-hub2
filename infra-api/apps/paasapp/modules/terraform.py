@@ -1,10 +1,13 @@
 import hashlib
 import logging
 import uuid
+import os
+import re
 from datetime import date
 from random import randint
 
 from common.conf import UTM
+from django.conf import settings
 from jinja2 import Environment, FileSystemLoader
 
 from ...lansweeper.utilities import get_lansweeper_data
@@ -174,7 +177,7 @@ def generate_unique_name(ticket_number):
     return unique_name
 
 
-def fill_trf_fields(policy_name, data, file_path):
+def fill_trf_fields(policy_name, data, file_path,template_name:str):
     """this method create terraform data with j2
 
     Args:
@@ -187,10 +190,10 @@ def fill_trf_fields(policy_name, data, file_path):
         services_list = services.split(',')
 
         policy_id = generate_uuid()
-        file_loader = FileSystemLoader('infra-api/apps/paasapp/templates')
+        # file_loader = FileSystemLoader('apps/paasapp/templates')
+        file_loader = FileSystemLoader(os.path.join(settings.BASE_DIR, 'apps', 'paasapp', 'templates'))
         env = Environment(loader=file_loader)
-        template = env.get_template('terf_access.j2')
-
+        template = env.get_template(template_name)
         dest_ipaddr_json = get_lansweeper_data(data.get('destination_name'), 1)
         dest_ipaddr = dest_ipaddr_json[0]['ip']
         if data.get('access_type') == "Server to Server":
@@ -221,11 +224,20 @@ def fill_trf_fields(policy_name, data, file_path):
             access_type=data.get('access_type')
 
         )
+        provider_template = env.get_template(name="provider.tf.j2")
+        provider_file_path = file_path + "provider.tf"
+        rendered_provider = provider_template.render({
+            "utm_hostname": next((_['UTM_ADDRESS'] for _ in UTM.utms if _['UTM_NAME'] == data.get('utm_name')), None),
+        })
 
         with open(file_path + "main.tf", 'w') as config:
             logger.info(f'File main.tf created in {file_path} ')
             config.write(trf_file)
             logger.info('Terraform file updated in file_path ')
+        with open(provider_file_path, "w") as file:
+            file.write(rendered_provider)
+            logger.info('Provider.tf file created.')
+            file.close()
 
     except Exception as e:
         logger.error(f'Fill Terraform template failed cause: {e}')
@@ -241,3 +253,91 @@ def decode_utm_token():
 def generate_uuid():
     new_uuid = str(uuid.uuid4())
     return new_uuid
+
+
+def convert_policies_to_terraform_file(policies:list,file_path,data,ticket_number):
+    """Process the Jinja2 template with fetched policies and generate Terraform file."""
+    # Load the Jinja2 template
+    file_loader = FileSystemLoader(os.path.join(settings.BASE_DIR,'apps','paasapp','templates'))
+    env = Environment(loader=file_loader)
+    template = env.get_template(name="editPolicy.tf.j2")
+    # Read existing Terraform file content
+    tf_file_path = file_path + "policies.tf"
+    try:
+        with open(tf_file_path, "r") as file:
+            tf_content = file.read()
+    except FileNotFoundError:
+        open(tf_file_path, "w").close()
+        tf_content = ""
+    # Process each policy and render the template
+    for policy in policies:
+        rendered = template.render(
+            {
+                "nat": policy["nat"],
+                "name": policy["name"],
+                "users": policy["users"],
+                "action": policy["action"],
+                "status": policy["status"],
+                "srcintfs": policy["srcintf"],
+                "dstintfs": policy["dstintf"],
+                "srcaddrs": policy["srcaddr"],
+                "dstaddrs": policy["dstaddr"],
+                "services": policy["service"],
+                "policyid": policy["policyid"],
+                "comments": policy["comments"],
+                "schedule": policy["schedule"],
+                "ips_sensor": policy["ips-sensor"],
+                "av_profile": policy["av-profile"],
+                "ssl_ssh_profile": policy["ssl-ssh-profile"],
+                "application_list": policy["application-list"],
+                "webfilter_profile": policy["webfilter-profile"],
+                "dnsfilter_profile": policy["dnsfilter-profile"],
+                "file_filter_profile": policy["file-filter-profile"],
+
+                "utm_token": next((_['UTM_TOKEN'] for _ in UTM.utms if _['UTM_NAME'] == data.get('utm_name')), None),
+                "ticket_number" : ticket_number,
+                "resource_name": re.sub(r'[^a-zA-Z0-9]', '', policy["name"]),
+                "source_name": data.get('source_name'),
+                "destination_name": data.get('destination_name'),
+                "new_services": data.get("service").split(','),
+                "user": data.get('user'),
+                "group": data.get('group'),
+                "access_type": data.get('access_type')
+            }
+        )
+
+        provider_template = env.get_template(name="provider.tf.j2")
+        provider_file_path = file_path + "provider.tf"
+        rendered_provider = provider_template.render({
+            "utm_hostname": next((_['UTM_ADDRESS'] for _ in UTM.utms if _['UTM_NAME'] == data.get('utm_name')), None),
+        })
+
+        # Regex pattern to find existing FortiGate firewall policy resources in Terraform file
+        resourcePattern = re.compile(
+            r'resource\s+"fortios_firewall_policy"\s+"(.*?)"\s+{(.*?policyid.*?)}',
+            re.DOTALL,
+        )
+        # Check if the policy already exists in the Terraform file
+        matches = resourcePattern.findall(tf_content)
+        resourcePatternFound = False
+        for match in matches:
+            resourceName, resourceContent = match
+            if f'resource "fortios_firewall_policy" "{resourceName}"' in rendered:
+                tf_content = tf_content.replace(
+                    f'resource "fortios_firewall_policy" "{resourceName}" {{{resourceContent}}}',
+                    f'resource "fortios_firewall_policy" "{resourceName}" {{{resourcePattern.findall(rendered)[0][1]}}}',
+                )
+                resourcePatternFound = True
+                break
+        # If policy not found, append the rendered policy to the file content
+        if not resourcePatternFound:
+            tf_content += rendered
+    # Write the updated content to the Terraform file
+    with open(tf_file_path, "w") as file:
+        file.write(tf_content)
+        logger.info('Policies.tf file created.')
+        file.close()
+    with open(provider_file_path, "w") as file:
+        file.write(rendered_provider)
+        logger.info('Provider.tf file created.')
+        file.close()

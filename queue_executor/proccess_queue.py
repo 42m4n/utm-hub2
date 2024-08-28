@@ -1,9 +1,10 @@
 from time import sleep
 import re
+import os
 from python_terraform import Terraform
 from logger import logger
 
-from conf import Redis as RedisConf, Terraform as TerraformConf, BaseSetting
+from conf import Redis as RedisConf, Terraform as TerraformConf, BaseSetting, UTM
 from send_response import send_response_to_manage_engine
 
 
@@ -30,34 +31,54 @@ def format_terraform_result(terraform_result):
         raise e
 
 
-def apply_terraform(queue_object):
-    files_directory = TerraformConf.loca_terraform_resources_path if BaseSetting.debug else TerraformConf.terraform_resources_path
+def apply_terraform(queue_object,var_utm_token):
+    files_directory = TerraformConf.local_terraform_resources_path if BaseSetting.debug else TerraformConf.terraform_resources_path
     file_location = f'{files_directory}{queue_object["file_name"]}'
     logger.info(f'Applying terraform in {file_location} ')
-
+    variables = {
+    'utm_token': var_utm_token
+    }
     tf = Terraform(working_dir=file_location)
-    terraform_result = tf.apply(skip_plan=True)
+    terraform_result = tf.apply(var=variables,skip_plan=True)
     formatted_result, success = format_terraform_result(terraform_result)
     return formatted_result, success
 
 
+def get_utm_hostname(queue_object):
+    files_directory = TerraformConf.local_terraform_resources_path if BaseSetting.debug else TerraformConf.terraform_resources_path
+    file_location = f'{files_directory}{queue_object["file_name"]}/provider.tf'
+    with open(file_location,"r") as file:
+        content = file.read()
+    pattern = r'hostname\s*=\s*"([^"]+)"'
+    match = re.search(pattern=pattern,string=content)
+    if match:
+        return match.group(1)
+    else:
+        return None
+
+
+def set_utm_token(hostname):
+    for utm in UTM.utms:
+        if utm.get("UTM_ADDRESS") == hostname:
+            token = utm.get("UTM_TOKEN")
+            return token
+
+
 def process_queue():
     logger.info('Start queue process ... ')
-    print('Start queue process ... ')
     while True:
         try:
             queue_len = RedisConf.redis_client.llen(RedisConf.queue_name)
             if queue_len > 0:
                 logger.info(f'Queue count: {queue_len} ')
-                print(f'Queue count: {queue_len} ')
 
                 _, data = RedisConf.redis_client.brpop(RedisConf.queue_name)
                 data = eval(data)
                 logger.info(f'Received data from cache: {data}')
-                print(f'Queue object from cache: {data}')
 
                 try:
-                    result, success = apply_terraform(data)
+                    utm_token = set_utm_token(get_utm_hostname(data))
+                    result, success = apply_terraform(queue_object=data,utm_token_var=utm_token)
                     if success:
                         send_response_to_manage_engine(
                             request_id=data.get('ticket_number'),

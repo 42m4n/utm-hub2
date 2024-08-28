@@ -1,0 +1,71 @@
+import {
+  to = fortios_firewall_policy.__{{ policyid }}__{{ resource_name }}
+  id = "{{ policyid }}"
+}
+resource "fortios_firewall_policy" "__{{ policyid }}__{{ resource_name }}" {
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [
+      dynamic_sort_subtable,
+      get_all_tables
+    ]
+  }
+  {% for srcintf in srcintfs %}
+  srcintf {
+    name = "{{ srcintf.name }}"
+  }{% endfor %}{% for dstintf in dstintfs %}
+  dstintf {
+    name = "{{ dstintf.name }}"
+  }{% endfor %}{% for srcaddr in srcaddrs %}
+  srcaddr {
+    name = "{{ srcaddr.name }}"
+  }{% endfor %}{% for dstaddr in dstaddrs %}
+  dstaddr {
+    name = "{{ dstaddr.name }}"
+  }{% endfor %}{% for service in services %}
+  service {
+    name = "{{ service.name }}"
+  }{% endfor %}{% for user in users %}
+  users {
+    name = "{{ user.name }}"
+  }{% endfor %}
+  policyid = {{ policyid }}
+  name = "{{ name }}"
+  comments = "{{ comments }}\nthis policy updated with ticket number {{ ticket_number }}"
+  action = "{{ action }}"
+  status = "{{ status }}"
+  schedule = "{{ schedule }}"
+  nat = "{{ nat }}"
+  av_profile = "{{ av_profile }}"
+  webfilter_profile = "{{ webfilter_profile }}"
+  dnsfilter_profile = "{{ dnsfilter_profile }}"
+  ips_sensor = "{{ ips_sensor }}"
+  application_list = "{{ application_list }}"
+  file_filter_profile = "{{ file_filter_profile }}"
+  ssl_ssh_profile = "{{ ssl_ssh_profile }}"
+
+# TODO change vdomparam base on utm name
+  {% if access_type == "Server to Server" %}
+  vdomparam = "Farhang-IDC"
+  {% endif %}
+  dstaddr {
+    name = "{{ destination_name }}"
+  }
+  srcaddr {
+    name = "{{ source_name }}"
+  }
+  {% if access_type == "User to Server" %}
+  users  {
+    name = "{{ user }}"
+  }
+  {% endif %}{% if  access_type == "User Group to Server" %}
+  groups  {
+    name = "{{ group }}"
+  }{% endif %}
+  {% for service in new_services %}
+  service {
+    name = "{{ service }}"
+  }{% endfor %}
+}
+
+# ================================================================================ #
