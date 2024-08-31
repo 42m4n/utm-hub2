@@ -1,5 +1,6 @@
 import ipaddress
 import logging
+import json
 
 import requests
 import urllib3
@@ -7,6 +8,7 @@ from django.core.cache import cache
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from common.conf import UTM
+from common.conf import Redis as RedisConf
 
 logger = logging.getLogger(__name__)
 
@@ -176,15 +178,29 @@ class UTMHandler:
                 logger.error(f'Error at getting interface by IP: {e}')
                 return None
 
-    def get_policies(self):
+    def get_policies_from_utm(self):
         """Fetch firewall policies from Fortigate API."""
         try:
             response = requests.get(self.policies_url,headers=self.headers, verify=False)
             response.raise_for_status  # Raises an HTTPError for bad responses
+            logger.info("Policies fetched from utm directly.")
             return response.json()["results"]
         except Exception as e:
             print(f"Failed to fetch policies: {e}")
             raise(e)
+
+    def get_policies_from_redis(self):
+        """Fetch firewall policies from Redis."""
+        try:
+            redis_key = f"{self.utm_name}_policies"
+            policies = json.loads(RedisConf.redis_client.get(redis_key))
+            if policies:
+                print("Policies fetched from redis.")
+                return policies
+            else:
+                UTMHandler(self.utm_name).get_policies_from_utm()
+        except Exception as e:
+            logger.info(f"error: {e}")
 
 
 def filter_utm_policies_source_destination(policies:list,sources:list,destinations:list):

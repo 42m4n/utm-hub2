@@ -59,5 +59,5 @@ class RabbitMQ:
 class UTM:
     utms = json.loads(os.getenv(
                 "UTMS",'''[
-                    {"UTM_NAME":"UTM-Test","UTM_ADDRESS":"172.20.26.148","UTM_TOKEN":"60xnNkpdfz70H756h1m5HdrbQc4wkm"}
+                    {"UTM_NAME":"UTM-Test","UTM_ADDRESS":"172.20.26.148","UTM_TOKEN":"Qd9bgjrH4Ns6y8nHfHQ5k6j7gkqfQ4"}
                 ]'''))

@@ -9,4 +9,5 @@ urlpatterns = [
     path("groups", views.LDAPGroups.as_view(), name="groups"),
     path("ports", views.UTMService.as_view(), name="services"),
     path("interfaces", views.UTMInterface.as_view(), name="interfaces"),
+    path("sync", views_v2.UTMPoliciesView.as_view(), name="sync"),
 ]

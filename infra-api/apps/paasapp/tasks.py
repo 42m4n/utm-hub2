@@ -52,7 +52,7 @@ def create_tf_files_v2(resources, ticket_number,utm_name):
         os.makedirs(f"{full_path}", exist_ok=True)
         # shutil.copytree(src=os.path.join(settings.BASE_DIR,'..','terraform'), dst=f"{full_path}")
         logger.info(f'Directory {full_path} created ')
-        policies = UTMHandler(utm_name).get_policies()
+        policies = UTMHandler(utm_name).get_policies_from_redis() 
         sources = [queue_obj.get("source_name")]
         destinations = [queue_obj.get("destination_name")]
         services = [queue_obj.get("service")]
@@ -64,8 +64,7 @@ def create_tf_files_v2(resources, ticket_number,utm_name):
         if matched_policy != []:
             convert_policies_to_terraform_file( policies=matched_policy,
                                                 data=queue_obj,
-                                                file_path=f"{Terraform.local_terraform_resources_path 
-                                                            if BaseSetting.debug else Terraform.terraform_resources_path}{unique_name}/",
+                                                file_path=f"{Terraform.local_terraform_resources_path if BaseSetting.debug else Terraform.terraform_resources_path}{unique_name}/",
                                                 ticket_number=ticket_number)
         tf(working_dir=full_path).init()
         logger.info('Terraform initialized.')

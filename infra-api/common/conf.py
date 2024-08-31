@@ -27,7 +27,7 @@ class UTM:
     utms = json.loads(os.getenv(
                 "UTMS",'''[
                     {"UTM_NAME":"utm1","UTM_ADDRESS":"172.24.1.33:1443","UTM_TOKEN":"75c3qpdG4QnG58jb1zpw996b36zyzH"},
-                    {"UTM_NAME":"utm2","UTM_ADDRESS":"172.20.26.148","UTM_TOKEN":"53jq8tQcQmnn74N88Qpf4qgb0H8h8g"}
+                    {"UTM_NAME":"utm2","UTM_ADDRESS":"172.20.26.148","UTM_TOKEN":"Qd9bgjrH4Ns6y8nHfHQ5k6j7gkqfQ4"}
                 ]'''))
     
     utm_interfaces_api = os.getenv("UTM_INTERFACES_API", 'api/v2/cmdb/system/interface')
