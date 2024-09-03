@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM repo.asax.ir/python:3.12-slim
 
 WORKDIR /utm-automation
 

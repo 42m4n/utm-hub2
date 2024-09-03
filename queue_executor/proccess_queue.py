@@ -1,6 +1,7 @@
 from time import sleep
 import re
 import os
+import logging
 from python_terraform import Terraform
 from logger import logger
 
@@ -35,11 +36,22 @@ def apply_terraform(queue_object,var_utm_token):
     files_directory = TerraformConf.local_terraform_resources_path if BaseSetting.debug else TerraformConf.terraform_resources_path
     file_location = f'{files_directory}{queue_object["file_name"]}'
     logger.info(f'Applying terraform in {file_location} ')
+    log_file = f"{file_location}/ticket_{queue_object['ticket_number']}.log"
+    apply_log = logging.getLogger(f"request_{queue_object['ticket_number']}")
+    apply_log.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(filename=log_file)
+    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    apply_log.addHandler(file_handler)    
     variables = {
     'utm_token': var_utm_token
     }
     tf = Terraform(working_dir=file_location)
+    tf.init()
     terraform_result = tf.apply(var=variables,skip_plan=True)
+    apply_log.info("terraform applied. stdout is: ...")
+    apply_log.info(terraform_result[1])
+    apply_log.info("stderr is: ...")
+    apply_log.info(terraform_result[2])
     formatted_result, success = format_terraform_result(terraform_result)
     return formatted_result, success
 
@@ -78,7 +90,7 @@ def process_queue():
 
                 try:
                     utm_token = set_utm_token(get_utm_hostname(data))
-                    result, success = apply_terraform(queue_object=data,utm_token_var=utm_token)
+                    result, success = apply_terraform(queue_object=data,var_utm_token=utm_token)
                     if success:
                         send_response_to_manage_engine(
                             request_id=data.get('ticket_number'),

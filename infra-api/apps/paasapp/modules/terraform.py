@@ -16,7 +16,8 @@ from .interface import (incoming_interface_clients,
                         outgoing_interface_clients,
                         outgoing_interface_server_to_server)
 
-logger = logging.getLogger(__name__)
+from common.logger import logger
+# logger = logging.getLogger(__name__)
 
 
 def create_requests_obj(udf_fields):
@@ -29,7 +30,7 @@ def create_requests_obj(udf_fields):
         "udf_sline_4202": "destination_interface",
         "udf_sline_4203": "service",
         "udf_sline_4560": "access_type",
-        "udf_utm_name": "utm_name"  # udf_utm_name is different. change it with the actual name when it be ready.
+        "udf_pick_5722": "utm_name"
     }
 
     new_object = {}
@@ -195,9 +196,14 @@ def fill_trf_fields(policy_name, data, file_path,template_name:str):
         env = Environment(loader=file_loader)
         template = env.get_template(template_name)
         dest_ipaddr_json = get_lansweeper_data(data.get('destination_name'), 1)
+        if dest_ipaddr_json == []:
+            raise ValueError("destination address is invalid or it's not in asset management yet.")
         dest_ipaddr = dest_ipaddr_json[0]['ip']
         if data.get('access_type') == "Server to Server":
             src_ipaddr_json = get_lansweeper_data(data.get('source_name'), 1)
+            if src_ipaddr_json == []:
+                raise ValueError("source address is invalid or it's not in asset management yet.")
+
             src_ipaddr = src_ipaddr_json[0]['ip']
             source_interface = incoming_interface_server_to_server(src_ipaddr)
             destination_interface = outgoing_interface_server_to_server(dest_ipaddr)

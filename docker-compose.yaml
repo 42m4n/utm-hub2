@@ -31,6 +31,8 @@ services:
     image: gitops.asax.ir/infrastructure-automation-team/security-automation/access-rule-automation/utm-automation:slim
     container_name: queue_executor
     restart: unless-stopped
+    volumes:
+      - /opt/terraform_resources:/opt/terraform_resources
     networks:
       - utm_automation
       - traefik-net

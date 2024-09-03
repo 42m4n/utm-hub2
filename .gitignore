@@ -171,3 +171,6 @@ infra-api/InfraApp/paasapp/__pycache__/
 infra-api/InfraApp/paasapp/migrations/__pycache__/
 infra-api/venv/
 infra-api/terraform_resources/
+terraform_resources/
+infra-api/terraform/
+terraform/

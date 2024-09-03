@@ -9,8 +9,9 @@ from django.core.cache import cache
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from common.conf import UTM
 from common.conf import Redis as RedisConf
+from common.logger import logger
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
 class UTMHandler:
@@ -182,25 +183,35 @@ class UTMHandler:
         """Fetch firewall policies from Fortigate API."""
         try:
             response = requests.get(self.policies_url,headers=self.headers, verify=False)
-            response.raise_for_status  # Raises an HTTPError for bad responses
-            logger.info("Policies fetched from utm directly.")
+            response.raise_for_status()  # Raises an HTTPError for bad responses
             return response.json()["results"]
+        except requests.exceptions.HTTPError as http_err:
+            if http_err.response.status_code == 401:
+                logger.error(f"Unauthorized access to {self.utm_name} !!!!")
+            elif http_err.response.status_code == 429:
+                logger.warning(f"Rate limit exceeded for {self.utm_name} !!!!")
+            else:
+                logger.error(f"HTTP Error: {http_err}")
+            raise
         except Exception as e:
-            print(f"Failed to fetch policies: {e}")
-            raise(e)
+            logger.error(f"Unexpected error: {e}")
+            raise
 
     def get_policies_from_redis(self):
         """Fetch firewall policies from Redis."""
         try:
             redis_key = f"{self.utm_name}_policies"
-            policies = json.loads(RedisConf.redis_client.get(redis_key))
-            if policies:
-                print("Policies fetched from redis.")
-                return policies
-            else:
-                UTMHandler(self.utm_name).get_policies_from_utm()
+            policies = json.loads(RedisConf.redis_client.get(redis_key) or b'[]')
+            if not policies:
+                logger.info("No policies found in Redis. Fetching from UTM...")
+                policies = self.get_policies_from_utm()
+                RedisConf.redis_client.set(redis_key, json.dumps(policies))
+                logger.info("Policies fetched and stored in Redis successfully")            
+            logger.info("Policies fetched successfully.")
+            return policies
         except Exception as e:
-            logger.info(f"error: {e}")
+            logger.info(f"Error fetching policies: ")
+            raise(e)
 
 
 def filter_utm_policies_source_destination(policies:list,sources:list,destinations:list):
