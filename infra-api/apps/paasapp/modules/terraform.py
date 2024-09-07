@@ -29,8 +29,10 @@ def create_requests_obj(udf_fields):
         "udf_sline_4201": "source_interface",
         "udf_sline_4202": "destination_interface",
         "udf_sline_4203": "service",
+        "udf_sline_3015": "service",
         "udf_sline_4560": "access_type",
-        "udf_pick_5722": "utm_name"
+        "udf_pick_5722": "utm_name",
+        "udf_pick_5723": "vdomparam"
     }
 
     new_object = {}
@@ -178,7 +180,7 @@ def generate_unique_name(ticket_number):
     return unique_name
 
 
-def fill_trf_fields(policy_name, data, file_path,template_name:str):
+def fill_trf_fields(policy_name, data, file_path, template_name: str):
     """this method create terraform data with j2
 
     Args:
@@ -227,8 +229,8 @@ def fill_trf_fields(policy_name, data, file_path,template_name:str):
             destination_interface=destination_interface,
             user=data.get('user'),
             group=data.get('group'),
-            access_type=data.get('access_type')
-
+            access_type=data.get('access_type'),
+            vdomparam=data.get('vdomparam')
         )
         provider_template = env.get_template(name="provider.tf.j2")
         provider_file_path = file_path + "provider.tf"
@@ -261,10 +263,10 @@ def generate_uuid():
     return new_uuid
 
 
-def convert_policies_to_terraform_file(policies:list,file_path,data,ticket_number):
+def convert_policies_to_terraform_file(policies: list, file_path, data, ticket_number):
     """Process the Jinja2 template with fetched policies and generate Terraform file."""
     # Load the Jinja2 template
-    file_loader = FileSystemLoader(os.path.join(settings.BASE_DIR,'apps','paasapp','templates'))
+    file_loader = FileSystemLoader(os.path.join(settings.BASE_DIR, 'apps', 'paasapp', 'templates'))
     env = Environment(loader=file_loader)
     template = env.get_template(name="editPolicy.tf.j2")
     # Read existing Terraform file content
@@ -301,7 +303,7 @@ def convert_policies_to_terraform_file(policies:list,file_path,data,ticket_numbe
                 "file_filter_profile": policy["file-filter-profile"],
 
                 "utm_token": next((_['UTM_TOKEN'] for _ in UTM.utms if _['UTM_NAME'] == data.get('utm_name')), None),
-                "ticket_number" : ticket_number,
+                "ticket_number": ticket_number,
                 "resource_name": re.sub(r'[^a-zA-Z0-9]', '', policy["name"]),
                 "source_name": data.get('source_name'),
                 "destination_name": data.get('destination_name'),
