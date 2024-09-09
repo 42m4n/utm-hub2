@@ -5,12 +5,14 @@ from .utm import UTMHandler
 
 
 def incoming_interface_clients(username, utm_name=None):
+    print("getting incoming interface for clients")
     try:
         ldap_handler = LDAPHandler()
         ldap_handler.connect()
         interface = ldap_handler.get_user_ou(username) or "any"
         ldap_handler.disconnect()
-    except:
+    except Exception as e:
+        print(f"cant get interfaces. 'any' would use   :  {e}")
         interface = "any"
     if interface == "Ams":
         return "Ams-teh"
@@ -24,6 +26,7 @@ def incoming_interface_clients(username, utm_name=None):
 
 
 def outgoing_interface_clients(ipaddr, utm_name=None):
+    print("getting outgoing interface for clients")
     if utm_name == "UTM-Karaj" or utm_name == "UTM-Negar":
         return "SDWAN-Farhang"
     try:
@@ -44,21 +47,24 @@ def outgoing_interface_clients(ipaddr, utm_name=None):
     return "any"
 
 
-def incoming_interface_server_to_server(ipaddr):
+def incoming_interface_server_to_server(ipaddr, utm_name):
+    print("getting incoming interface for servers")
     try:
         ip = ipaddress.IPv4Address(ipaddr)
     except ValueError:
         print(f"Invalid IPv4 address: {ipaddr}")
         return None
-    utm_handler = UTMHandler()
+    utm_handler = UTMHandler(utm_name)
     try:
         interface = utm_handler.get_interface_by_ip(ip)
-    except:
+    except Exception as e:
+        print(f"cant get interfaces. 'any' would use   :  {e}")
         interface = "any"
     return interface
 
 
-def outgoing_interface_server_to_server(ipaddr):
+def outgoing_interface_server_to_server(ipaddr, utm_name):
+    print("getting outgoing interface for servers")
     try:
         ip = ipaddress.IPv4Address(ipaddr)
     except ValueError:
@@ -72,5 +78,5 @@ def outgoing_interface_server_to_server(ipaddr):
     for network in list(networks.keys()):
         if ip in ipaddress.ip_network(network):
             return "IDC-Farhang1"
-    return incoming_interface_server_to_server(ip)
+    return incoming_interface_server_to_server(ipaddr=ip, utm_name=utm_name)
     # TODO get the neworks from os variables

@@ -1,5 +1,4 @@
 import ipaddress
-import logging
 import json
 
 import requests
@@ -145,9 +144,7 @@ class UTMHandler:
                 logger.error(f"Error at getting utm interfaces: {e}")
 
     def get_interface_by_ip(self, ip_address):
-        cache_key = (
-            f"{self.utm_name}_utm_interfaces_{ip_address}"
-        )
+        cache_key = f"{self.utm_name}_utm_interfaces_{ip_address}"
         cached_data = None
         try:
             cached_data = cache.get(cache_key)
@@ -163,26 +160,30 @@ class UTMHandler:
                     headers=self.headers,
                     verify=False,
                     timeout=self.timeout,
-                    )
+                )
                 response = response.json()
                 for interface in response.get("results"):
-                    int_name = interface.get('name')
-                    int_ipaddr, int_netmask = interface.get('ip').split()
+                    int_name = interface.get("name")
+                    int_ipaddr, int_netmask = interface.get("ip").split()
                     int_cidr = sum(
-                        bin(int(x)).count('1') for x in int_netmask.split('.'))
+                        bin(int(x)).count("1") for x in int_netmask.split(".")
+                    )
                     int_network = ipaddress.ip_network(
-                        f"{int_ipaddr}/{int_cidr}", strict=False)
+                        f"{int_ipaddr}/{int_cidr}", strict=False
+                    )
                     if ip_address in int_network:
                         return int_name
                 return None
             except Exception as e:
-                logger.error(f'Error at getting interface by IP: {e}')
+                logger.error(f"Error at getting interface by IP: {e}")
                 return None
 
     def get_policies_from_utm(self):
         """Fetch firewall policies from Fortigate API."""
         try:
-            response = requests.get(self.policies_url,headers=self.headers, verify=False)
+            response = requests.get(
+                self.policies_url, headers=self.headers, verify=False
+            )
             response.raise_for_status()  # Raises an HTTPError for bad responses
             return response.json()["results"]
         except requests.exceptions.HTTPError as http_err:
@@ -201,26 +202,28 @@ class UTMHandler:
         """Fetch firewall policies from Redis."""
         try:
             redis_key = f"{self.utm_name}_policies"
-            policies = json.loads(RedisConf.redis_client.get(redis_key) or b'[]')
+            policies = json.loads(RedisConf.redis_client.get(redis_key) or b"[]")
             if not policies:
                 logger.info("No policies found in Redis. Fetching from UTM...")
                 policies = self.get_policies_from_utm()
                 RedisConf.redis_client.set(redis_key, json.dumps(policies))
-                logger.info("Policies fetched and stored in Redis successfully")            
+                logger.info("Policies fetched and stored in Redis successfully")
             logger.info("Policies fetched successfully.")
             return policies
         except Exception as e:
             logger.info(f"Error fetching policies: ")
-            raise(e)
+            raise (e)
 
 
-def filter_utm_policies_source_destination(policies:list,sources:list,destinations:list):
+def filter_utm_policies_source_destination(
+    policies: list, sources: list, destinations: list
+):
     matching_policies = []
     for policy in policies:
         # Get all destination names from the policy
-        policy_destinations = set(dst.get('name') for dst in policy.get('dstaddr', []))
+        policy_destinations = set(dst.get("name") for dst in policy.get("dstaddr", []))
         # Get all service names from the policy
-        policy_sources = set(src.get('name') for src in policy.get('srcaddr', []))
+        policy_sources = set(src.get("name") for src in policy.get("srcaddr", []))
         # Check if destinations match exactly
         dst_match = set(destinations) == policy_destinations
         # Check if services match exactly
@@ -228,15 +231,18 @@ def filter_utm_policies_source_destination(policies:list,sources:list,destinatio
         # Check if both destinations and services match exactly
         if dst_match and service_match:
             matching_policies.append(policy)
-    return matching_policies  
+    return matching_policies
 
-def filter_utm_policies_services_destination(policies:list,services:list,destinations:list):
+
+def filter_utm_policies_services_destination(
+    policies: list, services: list, destinations: list
+):
     matching_policies = []
     for policy in policies:
         # Get all destination names from the policy
-        policy_destinations = set(dst.get('name') for dst in policy.get('dstaddr', []))
+        policy_destinations = set(dst.get("name") for dst in policy.get("dstaddr", []))
         # Get all service names from the policy
-        policy_services = set(svc.get('name') for svc in policy.get('service', []))
+        policy_services = set(svc.get("name") for svc in policy.get("service", []))
         # Check if destinations match exactly
         dst_match = set(destinations) == policy_destinations
         # Check if services match exactly

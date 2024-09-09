@@ -31,7 +31,7 @@ resource "fortios_firewall_policy" "__{{ policyid }}__{{ resource_name }}" {
   }{% endfor %}
   policyid = {{ policyid }}
   name = "{{ name }}"
-  comments = "{{ comments }}\nthis policy updated with ticket number {{ ticket_number }}"
+  comments = "{{ comments }}\n+{{ ticket_number }}"
   action = "{{ action }}"
   status = "{{ status }}"
   schedule = "{{ schedule }}"

@@ -1,16 +1,17 @@
 import json
 
-from apps.paasapp.serilizers import PaasSerializer
-from common.logger import logger
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..modules.terraform import create_requests_obj
-from ..tasks import create_tf_files_v2
-from ..modules.utm import UTMHandler
-from common.conf import Redis as RedisConf
+from apps.paasapp.serilizers import PaasSerializer
 from common.conf import UTM
+from common.conf import Redis as RedisConf
+from common.logger import logger
+
+from ..modules.terraform import create_requests_obj
+from ..modules.utm import UTMHandler
+from ..tasks import create_tf_files_v2
 
 
 class ApiPaasViewV2(APIView):
@@ -36,9 +37,12 @@ class ApiPaasViewV2(APIView):
                     try:
                         request_obj = create_requests_obj(resources)
                         utm_name = request_obj.get("utm_name")
-                        if not any(utm['UTM_NAME'] == utm_name for utm in UTM.utms):
+                        if not any(utm["UTM_NAME"] == utm_name for utm in UTM.utms):
                             logger.info(f"utm {utm_name} is not in the configurations.")
-                            return Response({"error": "UTM name is not valid."}, status=status.HTTP_400_BAD_REQUEST)
+                            return Response(
+                                {"error": "UTM name is not valid."},
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
                         create_tf_files_v2(resources, ticket_number, utm_name)
                     except Exception as error:
                         logger.error(f"Error in create_tf_files: {error}")
@@ -59,11 +63,15 @@ class ApiPaasViewV2(APIView):
 
 class UTMPoliciesView(APIView):
     def get(self, request):
-        utm_name = request.GET.get('utm_name')
+        utm_name = request.GET.get("utm_name")
         if not utm_name:
-            return Response({"error": "UTM name is required."}, status=status.HTTP_400_BAD_REQUEST)
-        if not any(utm['UTM_NAME'] == utm_name for utm in UTM.utms):
-            return Response({"error": "UTM name is not valid."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "UTM name is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if not any(utm["UTM_NAME"] == utm_name for utm in UTM.utms):
+            return Response(
+                {"error": "UTM name is not valid."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             utm_handler = UTMHandler(utm_name)
@@ -74,6 +82,11 @@ class UTMPoliciesView(APIView):
             RedisConf.redis_client.set(redis_key, json.dumps(policies))
             logger.info("Policies fetched and stored in Redis successfully")
 
-            return Response({"message": "Policies fetched and stored in Redis successfully"}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "Policies fetched and stored in Redis successfully"},
+                status=status.HTTP_200_OK,
+            )
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

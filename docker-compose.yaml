@@ -21,9 +21,9 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=traefik-net
-      - traefik.http.routers.utm_api.entrypoints=utm
-      - traefik.http.routers.utm_api.rule=Host(`iaas-app.asax.ir`)
-      - traefik.http.routers.utm_api.tls=false
+      - traefik.http.routers.utm_api.entrypoints=https
+      - traefik.http.routers.utm_api.rule=PathPrefix(`/api/utm/`) || PathPrefix(`/api/lansweeper/`)
+      - traefik.http.routers.utm_api.tls=true
       - traefik.http.routers.utm_api.tls.options=default
       - traefik.http.services.utm_api.loadbalancer.server.port=8000
 
@@ -73,11 +73,12 @@ services:
     networks:
       - traefik-net
     ports:
-      - 8001:8001
-      - 8002:8002
+      - 443:443
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./certs:/certs:ro
+    environment:
+      - TZ=Asia/Tehran
     command:
       - --log.level=ERROR
       - --log.filepath=/log-file.log
@@ -91,8 +92,7 @@ services:
       - --providers.docker.endpoint=unix:///var/run/docker.sock
       - --providers.docker.exposedbydefault=false
       - --providers.docker.network=traefik-net
-      - --entrypoints.utm.address=:8001
-      - --entrypoints.vcenter.address=:8002 
+      - --entrypoints.https.address=:443
       - --metrics.prometheus=true
       - --entryPoints.metrics.address=:8082
       - --metrics.prometheus.entryPoint=metrics

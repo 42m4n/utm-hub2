@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class LansweeperConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apps.lansweeper'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.lansweeper"
