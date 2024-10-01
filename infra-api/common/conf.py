@@ -111,3 +111,12 @@ class RabbitMQ:
     username = os.getenv("RABBITMQ_USERNAME", "pusheradmin")
     password = os.getenv("RABBITMQ_PASSWORD", "1qaz!QAZ")
     queue_name = os.getenv("RABBITMQ_QUEUE_NAME", "utm_automation_log")
+
+
+class ManageEngine:
+    manage_engine_address = os.getenv("MANAGE_ENGINE_ADDRESS", "https://172.20.29.194")
+    manage_engine_token = os.getenv(
+        "MANAGE_ENGINE_TOKEN", "6619FACD-CB5D-430A-B564-705D0887E7D1"
+    )
+    manage_engine_done_status = os.getenv("MANAGE_ENGINE_DONE_STATUS", "4")
+    manage_engine_error_status = os.getenv("MANAGE_ENGINE_ERROR_STATUS", "301")

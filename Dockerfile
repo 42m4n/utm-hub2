@@ -3,6 +3,7 @@ FROM repo.asax.ir/python:3.12-slim
 WORKDIR /utm-automation
 
 ENV TF_PLUGIN_CACHE_DIR="/root/.terraform.d/plugin-cache"
+ENV CHECKPOINT_DISABLE=true
 
 RUN ASA_REPO="https://repo.asax.ir/repository" \
     && sed -i 's/http:\/\/deb.debian.org/https:\/\/repo.asax.ir\/repository\/deb.debian.org/' /etc/apt/sources.list.d/debian.sources \
@@ -17,7 +18,7 @@ RUN ASA_REPO="https://repo.asax.ir/repository" \
     && curl -o terraform.zip ${ASA_REPO}/releases.hashicorp.com/terraform/${LATEST_TERRAFORM_VERSION}/terraform_${LATEST_TERRAFORM_VERSION}_linux_amd64.zip \
     && unzip terraform.zip -d /usr/local/bin \
     && rm terraform.zip \
-    && LATEST_PROVIDER_VERSION=$(curl -sSf ${ASA_REPO}/api.github.com//repos/fortinetdev/terraform-provider-fortios/releases | jq -r '.[0].tag_name') \
+    && LATEST_PROVIDER_VERSION=$(curl -sSf ${ASA_REPO}/api.github.com/repos/fortinetdev/terraform-provider-fortios/releases | jq -r '.[0].tag_name') \
     && curl -o terraform-provider-fortios.zip ${ASA_REPO}/github.com/fortinetdev/terraform-provider-fortios/releases/download/${LATEST_PROVIDER_VERSION}/terraform-provider-fortios_${LATEST_PROVIDER_VERSION}_linux_amd64.zip \
     && mkdir -p ~/.terraform.d/plugin-cache \
     && mkdir -p ~/.terraform.d/plugins/registry.terraform.io/fortinetdev/fortios/${LATEST_PROVIDER_VERSION}/linux_amd64/ \

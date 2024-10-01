@@ -3,12 +3,11 @@ import json
 
 import requests
 import urllib3
+from common.conf import UTM
+from common.logger import logger
 from django.core.cache import cache
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-from common.conf import UTM
-from common.conf import Redis as RedisConf
-from common.logger import logger
 
 # logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class UTMHandler:
             try:
                 logger.info("Get services from UTM")
                 response = requests.get(
-                    self.services_url,
+                    url=self.services_url,
                     headers=self.headers,
                     verify=False,
                     timeout=self.timeout,
@@ -70,28 +69,21 @@ class UTMHandler:
                             and search_field.lower() in i["name"].lower()
                         )
                     ]
-                    try:
-                        cache.set(
-                            f"{self.utm_name}_utm_services_{search_field}", result
-                        )
-                    except Exception as e:
-                        logger.warning(f"Could not set cache: {e}")
-                else:
-                    try:
-                        cache.set(f"{self.utm_name}_utm_services", result)
-                    except Exception as e:
-                        logger.warning(f"Could not set cache: {e}")
+                try:
+                    cache.set(cache_key, result)
+                except Exception as e:
+                    logger.warning(f"Could not set cache: {e}")
                 return result
             except requests.exceptions.Timeout:
                 logger.error(f"Request to {self.utm_name} on {self.utm_path} timed out")
             except Exception as e:
                 logger.error(f"Error at getting utm services: {e}")
 
-    def get_interfaces(self, search_field=None):
+    def get_interfaces(self, search_field=None, vdom="root"):
         cache_key = (
-            f"{self.utm_name}_utm_interfaces_{search_field.lower()}"
+            f"{self.utm_name}_{vdom}_utm_interfaces_{search_field.lower()}"
             if search_field
-            else "utm_interfaces"
+            else f"{self.utm_name}_{vdom}_utm_interfaces"
         )
         cached_data = None
         try:
@@ -105,7 +97,7 @@ class UTMHandler:
             try:
                 logger.info("Get interfaces from UTM")
                 response = requests.get(
-                    self.interfaces_url,
+                    url=f"{self.interfaces_url}?vdom={vdom}",
                     headers=self.headers,
                     verify=False,
                     timeout=self.timeout,
@@ -126,25 +118,18 @@ class UTMHandler:
                             and search_field.lower() in i["name"].lower()
                         )
                     ]
-                    try:
-                        cache.set(
-                            f"{self.utm_name}_utm_interfaces_{search_field}", result
-                        )
-                    except Exception as e:
-                        logger.warning(f"Could not set cache: {e}")
-                else:
-                    try:
-                        cache.set(f"{self.utm_name}_utm_interfaces", result)
-                    except Exception as e:
-                        logger.warning(f"Could not set cache: {e}")
+                try:
+                    cache.set(cache_key, result)
+                except Exception as e:
+                    logger.warning(f"Could not set cache: {e}")
                 return result
             except requests.exceptions.Timeout:
                 logger.error(f"Request to {self.utm_name} on {self.utm_path} timed out")
             except Exception as e:
                 logger.error(f"Error at getting utm interfaces: {e}")
 
-    def get_interface_by_ip(self, ip_address):
-        cache_key = f"{self.utm_name}_utm_interfaces_{ip_address}"
+    def get_interface_by_ip(self, ip_address, vdom="root"):
+        cache_key = f"{self.utm_name}_utm_interfaces_{vdom}_{ip_address}"
         cached_data = None
         try:
             cached_data = cache.get(cache_key)
@@ -156,7 +141,7 @@ class UTMHandler:
         else:
             try:
                 response = requests.get(
-                    self.interfaces_url,
+                    url=f"{self.interfaces_url}?vdom={vdom}",
                     headers=self.headers,
                     verify=False,
                     timeout=self.timeout,
@@ -172,6 +157,10 @@ class UTMHandler:
                         f"{int_ipaddr}/{int_cidr}", strict=False
                     )
                     if ip_address in int_network:
+                        try:
+                            cache.set(cache_key, int_name)
+                        except Exception as e:
+                            logger.warning(f"Could not set cache: {e}")
                         return int_name
                 return None
             except Exception as e:
@@ -202,16 +191,16 @@ class UTMHandler:
         """Fetch firewall policies from Redis."""
         try:
             redis_key = f"{self.utm_name}_policies"
-            policies = json.loads(RedisConf.redis_client.get(redis_key) or b"[]")
+            policies = json.loads(cache.get(redis_key) or b"[]")
             if not policies:
                 logger.info("No policies found in Redis. Fetching from UTM...")
                 policies = self.get_policies_from_utm()
-                RedisConf.redis_client.set(redis_key, json.dumps(policies))
+                cache.set(redis_key, json.dumps(policies))
                 logger.info("Policies fetched and stored in Redis successfully")
             logger.info("Policies fetched successfully.")
             return policies
         except Exception as e:
-            logger.info(f"Error fetching policies: ")
+            logger.info("Error fetching policies: ")
             raise (e)
 
 
@@ -222,14 +211,18 @@ def filter_utm_policies_source_destination(
     for policy in policies:
         # Get all destination names from the policy
         policy_destinations = set(dst.get("name") for dst in policy.get("dstaddr", []))
-        # Get all service names from the policy
+        # Get all sources from the policy
         policy_sources = set(src.get("name") for src in policy.get("srcaddr", []))
+        # Get all users from the policy
+        policy_users = set(user.get("name") for user in policy.get("users", []))
+        # Get all groups from the policy
+        policy_groups = set(group.get("name") for group in policy.get("groups", []))
         # Check if destinations match exactly
         dst_match = set(destinations) == policy_destinations
         # Check if services match exactly
-        service_match = set(sources) == policy_sources
+        sources_match = set(sources) == (policy_sources | policy_users | policy_groups)
         # Check if both destinations and services match exactly
-        if dst_match and service_match:
+        if dst_match and sources_match:
             matching_policies.append(policy)
     return matching_policies
 

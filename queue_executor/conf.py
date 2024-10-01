@@ -42,6 +42,7 @@ class ManageEngine:
         "MANAGE_ENGINE_TOKEN", "6619FACD-CB5D-430A-B564-705D0887E7D1"
     )
     manage_engine_done_status = os.getenv("MANAGE_ENGINE_DONE_STATUS", "4")
+    manage_engine_error_status = os.getenv("MANAGE_ENGINE_ERROR_STATUS", "301")
 
 
 class Redis:

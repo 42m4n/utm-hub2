@@ -47,7 +47,7 @@ def outgoing_interface_clients(ipaddr, utm_name=None):
     return "any"
 
 
-def incoming_interface_server_to_server(ipaddr, utm_name):
+def incoming_interface_server_to_server(ipaddr, utm_name, vdom):
     print("getting incoming interface for servers")
     try:
         ip = ipaddress.IPv4Address(ipaddr)
@@ -56,14 +56,14 @@ def incoming_interface_server_to_server(ipaddr, utm_name):
         return None
     utm_handler = UTMHandler(utm_name)
     try:
-        interface = utm_handler.get_interface_by_ip(ip)
+        interface = utm_handler.get_interface_by_ip(ip, vdom)
     except Exception as e:
         print(f"cant get interfaces. 'any' would use   :  {e}")
         interface = "any"
     return interface
 
 
-def outgoing_interface_server_to_server(ipaddr, utm_name):
+def outgoing_interface_server_to_server(ipaddr, utm_name, vdom=None):
     print("getting outgoing interface for servers")
     try:
         ip = ipaddress.IPv4Address(ipaddr)
@@ -78,5 +78,5 @@ def outgoing_interface_server_to_server(ipaddr, utm_name):
     for network in list(networks.keys()):
         if ip in ipaddress.ip_network(network):
             return "IDC-Farhang1"
-    return incoming_interface_server_to_server(ipaddr=ip, utm_name=utm_name)
+    return incoming_interface_server_to_server(ipaddr=ip, utm_name=utm_name, vdom=vdom)
     # TODO get the neworks from os variables

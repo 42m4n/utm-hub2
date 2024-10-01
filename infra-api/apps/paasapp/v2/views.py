@@ -1,4 +1,5 @@
 import json
+import requests
 
 from rest_framework import status
 from rest_framework.response import Response
@@ -8,6 +9,7 @@ from apps.paasapp.serilizers import PaasSerializer
 from common.conf import UTM
 from common.conf import Redis as RedisConf
 from common.logger import logger
+from common.conf import ManageEngine as ME
 
 from ..modules.terraform import create_requests_obj
 from ..modules.utm import UTMHandler
@@ -46,6 +48,17 @@ class ApiPaasViewV2(APIView):
                         create_tf_files_v2(resources, ticket_number, utm_name)
                     except Exception as error:
                         logger.error(f"Error in create_tf_files: {error}")
+                        # Sending error status code into ManageEngine
+                        ticket_url = (
+                            f"{ME.manage_engine_address}/api/v3/requests/{ticket_number}"
+                        )
+                        response = requests.put(
+                            url=ticket_url,
+                            headers={"authtoken": f"{ME.manage_engine_token}"},
+                            data={"input_data": str({"request": {"status": {"id": ME.manage_engine_error_status}}})},
+                            verify=False
+                        )
+                        response.raise_for_status()
                         return Response(
                             {"response": [{"status": "not ok"}]},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -3,6 +3,7 @@ import sys
 import time
 
 import pika
+import pika.exceptions
 from conf import RabbitMQ
 
 
@@ -40,7 +41,7 @@ class RabbitMQHandler(logging.Handler):
                         host=self.host,
                         port=self.port,
                         credentials=credentials,
-                        heartbeat=600,
+                        heartbeat=0,
                     )
                 )
                 self.channel = self.connection.channel()

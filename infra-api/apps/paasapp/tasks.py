@@ -93,8 +93,12 @@ def create_tf_files_v2(resources, ticket_number, utm_name):
         request_log.addHandler(file_handler)
         policies = UTMHandler(utm_name).get_policies_from_redis()
         request_log.info("getting policies: done.")
-        sources = [queue_obj.get("source_name", None)]
-        request_log.info(f"sources = {sources}")
+        source = [queue_obj.get("source_name", None)]
+        user = [queue_obj.get("user", None)]
+        group = [queue_obj.get("group", None)]
+        request_log.info(f"source = {source}")
+        request_log.info(f"user = {user}")
+        request_log.info(f"group = {group}")
         destinations = [queue_obj.get("destination_name", None)]
         request_log.info(f"destination = {destinations}")
         services = [queue_obj.get("service")]
@@ -107,7 +111,9 @@ def create_tf_files_v2(resources, ticket_number, utm_name):
                 "couldn't find any match base on services and destination."
             )
             matched_policy = filter_utm_policies_source_destination(
-                policies=policies, sources=sources, destinations=destinations
+                policies=policies,
+                sources=set(source).union(user, group),
+                destinations=destinations
             )
         if matched_policy == []:
             request_log.info(

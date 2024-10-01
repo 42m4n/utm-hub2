@@ -13,7 +13,7 @@ services:
       rabbit:
         condition: service_healthy
     volumes:
-      - /opt/terraform_resources:/opt/terraform_resources
+      - ./terraform_resources:/opt/terraform_resources
     env_file:
       - ./.env
     environment:
@@ -32,7 +32,7 @@ services:
     container_name: queue_executor
     restart: unless-stopped
     volumes:
-      - /opt/terraform_resources:/opt/terraform_resources
+      - ./terraform_resources:/opt/terraform_resources
     networks:
       - utm_automation
       - traefik-net
@@ -41,6 +41,8 @@ services:
         condition: service_healthy
       rabbit:
         condition: service_healthy
+    environment:
+      - TZ=Asia/Tehran
     env_file:
       - ./.env
     command: ["python", "queue_executor/proccess_queue.py"]
@@ -50,6 +52,8 @@ services:
     container_name: redis
     restart: always
     pull_policy: if_not_present
+    environment:
+      - TZ=Asia/Tehran
     networks:
       - utm_automation
     healthcheck:
@@ -60,6 +64,8 @@ services:
     container_name: rabbit
     pull_policy: if_not_present
     restart: always
+    environment:
+      - TZ=Asia/Tehran
     networks:
       - utm_automation
     healthcheck:

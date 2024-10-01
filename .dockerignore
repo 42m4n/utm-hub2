@@ -8,3 +8,4 @@
 !infra-api/
 !terraform/
 terraform/.terraform*
+infra-api/terraform_resources/

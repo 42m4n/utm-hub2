@@ -180,6 +180,7 @@ class UTMInterface(APIView):
             search_field = None
             params = request.GET.get("input_data")
             utm_name = request.GET.get("utm_name")
+            vdom = request.GET.get("vdom")
             if params:
                 params = eval(params)
                 search_field = params.get("list_info").get("search_fields").get("name")
@@ -193,7 +194,7 @@ class UTMInterface(APIView):
                                 {
                                     "status_code": 4000,
                                     "type": "failed",
-                                    "message": f"{utm_name} is not in the configurations!",
+                                    "message": f"{utm_name} is not in configurations!",
                                 }
                             ],
                             "status": "failed",
@@ -201,7 +202,7 @@ class UTMInterface(APIView):
                     }
                 )
 
-            interfaces = UTMHandler(utm_name).get_interfaces(search_field)
+            interfaces = UTMHandler(utm_name).get_interfaces(search_field, vdom)
 
             if interfaces is None:
                 return JsonResponse(

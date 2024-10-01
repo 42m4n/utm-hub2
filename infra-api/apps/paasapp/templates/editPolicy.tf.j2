@@ -44,7 +44,6 @@ resource "fortios_firewall_policy" "__{{ policyid }}__{{ resource_name }}" {
   file_filter_profile = "{{ file_filter_profile }}"
   ssl_ssh_profile = "{{ ssl_ssh_profile }}"
 
-# TODO change vdomparam base on utm name
   {% if access_type == "Server to Server" %}
   vdomparam = "Farhang-IDC"
   {% endif %}
@@ -69,3 +68,4 @@ resource "fortios_firewall_policy" "__{{ policyid }}__{{ resource_name }}" {
 }
 
 # ================================================================================ #
+

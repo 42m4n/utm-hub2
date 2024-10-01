@@ -11,7 +11,7 @@ RESPONSE_CODE = {
 }
 
 
-def send_response_to_manage_engine(request_id, source, destination, service, response_code):
+def send_response_to_manage_engine(request_id, response_code, source=None, destination=None, service=None):
     """
     This function update ticket in Manage Engine by add a note to ticket contains
     the result of utm and if the response code is ok change the ticket status to close.
@@ -33,27 +33,41 @@ def send_response_to_manage_engine(request_id, source, destination, service, res
             "add_to_linked_requests": True,
         }
     }
-    status_input_data = {
+    status_done_input_data = {
         "request": {"status": {"id": conf.ManageEngine.manage_engine_done_status}}
     }
+    status_error_input_data = {
+        "request": {"status": {"id": conf.ManageEngine.manage_engine_error_status}}
+    }
     comment_data = {"input_data": str(comment_input_data)}
-    status_data = {"input_data": str(status_input_data)}
+    status_done_data = {"input_data": str(status_done_input_data)}
+    status_error_data = {"input_data": str(status_error_input_data)}
     try:
-        logger.info(
-            f"Sending data : {comment_input_data} to ManageEngine to add comment"
-        )
-        response = requests.post(
-            comment_url, headers=headers, data=comment_data, verify=False
-        )
-        logger.info(f"ManageEngine response status: {response.status_code} ")
-        response.raise_for_status()
-        logger.info(f"ManageEngine comment response: {response.text} ")
         if response_code == "1":
             logger.info(
-                f"Sending data : {status_data} to ManageEngine to change ticket status"
+                f"Sending data : {comment_input_data} to ManageEngine to add comment"
+            )
+            response_comment = requests.post(
+                comment_url, headers=headers, data=comment_data, verify=False
+            )
+            logger.info(f"ManageEngine response status: {response_comment.status_code} ")
+            response_comment.raise_for_status()
+            logger.info(f"ManageEngine comment response: {response_comment.text} ")
+            logger.info(
+                f"Sending data : {status_done_data} to ManageEngine to change ticket status"
             )
             response = requests.put(
-                ticket_url, headers=headers, data=status_data, verify=False
+                ticket_url, headers=headers, data=status_done_data, verify=False
+            )
+            logger.info(f"ManageEngine response for status: {response.status_code} ")
+            response.raise_for_status()
+            logger.info(f"ManageEngine response: {response.text} ")
+        elif response_code == "2":
+            logger.info(
+                f"Sending data : {status_error_data} to ManageEngine to change ticket status"
+            )
+            response = requests.put(
+                ticket_url, headers=headers, data=status_error_input_data, verify=False
             )
             logger.info(f"ManageEngine response for status: {response.status_code} ")
             response.raise_for_status()

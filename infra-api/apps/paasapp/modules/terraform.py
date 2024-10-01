@@ -31,7 +31,6 @@ def create_requests_obj(udf_fields):
         "udf_sline_4201": "source_interface",
         "udf_sline_4202": "destination_interface",
         "udf_sline_4203": "service",
-        "udf_sline_3015": "service",
         "udf_sline_4560": "access_type",
         "udf_pick_5722": "utm_name",
         "udf_pick_5723": "vdomparam",
@@ -248,6 +247,7 @@ def fill_trf_fields(policy_name, data, file_path, template_name: str, utm_name):
     """
     try:
         services = data.get("service")
+        vdom = data.get("vdomparam")
         services_list = services.split(",")
 
         policy_id = generate_uuid()
@@ -271,23 +271,31 @@ def fill_trf_fields(policy_name, data, file_path, template_name: str, utm_name):
                 )
 
             src_ipaddr = src_ipaddr_json[0]["ip"]
-            source_interface = incoming_interface_server_to_server(
-                ipaddr=src_ipaddr,
-                utm_name=utm_name,
-            )
+            source_interface = (data.get("source_interface") or
+                                incoming_interface_server_to_server(
+                                    ipaddr=src_ipaddr,
+                                    utm_name=utm_name,
+                                    vdom=vdom
+                                ))
             logger.info(f"using {source_interface} as source interface.")
-            destination_interface = outgoing_interface_server_to_server(
-                ipaddr=dest_ipaddr,
-                utm_name=utm_name,
-            )
+            destination_interface = (data.get("destination_interface") or
+                                     outgoing_interface_server_to_server(
+                                        ipaddr=dest_ipaddr,
+                                        utm_name=utm_name,
+                                        vdom=vdom
+                                    ))
             logger.info(f"using {destination_interface} as destination interface.")
         else:
-            source_interface = incoming_interface_clients(
-                data.get("source_name").replace("@asax.ir", ""), data.get("utm_name")
-            )
-            destination_interface = outgoing_interface_clients(
-                dest_ipaddr, data.get("utm_name")
-            )
+            source_interface = (data.get("source_interface") or
+                                incoming_interface_clients(
+                                username=data.get("source_name").replace("@asax.ir", ""),
+                                utm_name=data.get("utm_name")
+                                ))
+            destination_interface = (data.get("destination_interface") or
+                                     outgoing_interface_clients(
+                                        ipaddr=dest_ipaddr,
+                                        utm_name=data.get("utm_name")
+                                    ))
 
         trf_file = template.render(
             policy_id=policy_id,
